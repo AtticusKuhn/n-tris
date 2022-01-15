@@ -26,11 +26,31 @@ var pixelWidth = 10;
 var pixelHeight = 24;
 var width = pixelWidth * pixel;
 var height = pixelHeight * pixel;
+var rotationDifference = 0;
 var momevement = 3;
 canvas.width = width;
 canvas.height = height;
+var clone = function (x) {
+    if (Array.isArray(x)) {
+        //@ts-ignore
+        return __spreadArray([], x, true);
+    }
+    else if (typeof x === "object") {
+        return __assign({}, x);
+    }
+    else {
+        return x;
+    }
+};
+var makeArray = function (length, element) {
+    var x = [];
+    for (var i = 0; i < length; i++) {
+        x.push(clone(element));
+    }
+    return x;
+};
 var generateShape = function (n) {
-    if (n === 1) {
+    if (n <= 1) {
         return [[true]];
     }
     else {
@@ -41,16 +61,19 @@ var generateShape = function (n) {
         else {
             s.push([true]);
         }
-        return s;
+        var max = Math.max.apply(Math, s.map(function (x) { return x.length; }));
+        console.log("max is", max);
+        return s.map(function (e) { return e; });
     }
 };
 var generatePiece = function (n) {
     if (n === void 0) { n = 4; }
     return {
         position: {
-            x: 0,
+            x: Math.random() * width,
             y: 0
         },
+        // rotation: 0,
         shape: generateShape(n)
     };
 };
@@ -69,28 +92,25 @@ var safeGet = function (array, index) {
     }
     return array[mod(Math.floor(index), array.length)];
 };
-var clone = function (x) {
-    if (Array.isArray(x)) {
-        //@ts-ignore
-        return __spreadArray([], x, true);
-    }
-    else if (typeof x === "object") {
-        return __assign({}, x);
-    }
-    else {
-        return x;
-    }
-};
 var keys = {
     "w": false,
     "a": false,
     s: false,
     d: false
 };
+var rotate = function (matrix) { return matrix[0].map(function (val, index) { return matrix.map(function (row) { return row[index]; }).reverse(); }); };
 window.addEventListener("keydown", function (keyboardEvent) {
     var key = keyboardEvent.key;
     if (Object.keys(keys).includes(keyboardEvent.key)) {
         keys[key] = true;
+    }
+    if (key === "ArrowLeft") {
+        rotationDifference = (Math.PI / 2) % (2 * Math.PI);
+        currentPiece.shape = rotate(currentPiece.shape);
+    }
+    if (key === "ArrowRight") {
+        rotationDifference = (-Math.PI / 2) % (2 * Math.PI);
+        currentPiece.shape = rotate(rotate(rotate(currentPiece.shape)));
     }
 });
 window.addEventListener("keyup", function (keyboardEvent) {
@@ -99,14 +119,6 @@ window.addEventListener("keyup", function (keyboardEvent) {
         keys[key] = false;
     }
 });
-var makeArray = function (length, element) {
-    var x = [];
-    for (var i = 0; i < length; i++) {
-        x.push(clone(element));
-    }
-    console.log(x);
-    return x;
-};
 var drawPixel = function (x, y) { return ctx.fillRect(x, y, pixel, pixel); };
 var makeBoard = function () { return makeArray(pixelWidth, __spreadArray(__spreadArray([], makeArray(pixelHeight - 1, false), true), makeArray(pixelWidth, true), true)); };
 var board = makeBoard();
@@ -117,9 +129,19 @@ function draw() {
         drawPixel(xindex * pixel, yindex * pixel);
     });
     // ctx.fillStyle = "red"
+    if (rotationDifference !== 0) {
+        ctx.translate(currentPiece.position.x, currentPiece.position.y);
+        ctx.rotate(rotationDifference);
+        ctx.translate(-currentPiece.position.x, -currentPiece.position.y);
+    }
     iterateCoveringArray(currentPiece.shape, function (columnIndex, rowIndex) {
         return drawPixel(currentPiece.position.x + columnIndex * pixel, currentPiece.position.y + rowIndex * pixel);
     });
+    if (rotationDifference !== 0) {
+        ctx.translate(currentPiece.position.x, currentPiece.position.y);
+        ctx.rotate(-rotationDifference);
+        ctx.translate(-currentPiece.position.x, -currentPiece.position.y);
+    }
 }
 var iterateCoveringArray = function (piece, func) {
     if (!Array.isArray(piece))
@@ -137,7 +159,7 @@ var iterateCoveringArray = function (piece, func) {
 var doesCollide = function (x, y) {
     var ret = false;
     iterateCoveringArray(currentPiece.shape, function (xindex, yindex) {
-        var xamount = xindex + Math.floor(x / pixel);
+        var xamount = xindex + Math.round(x / pixel);
         var yamount = yindex + Math.floor(y / pixel);
         if (yamount > pixelHeight)
             ret = true;
@@ -166,6 +188,12 @@ function tick() {
         currentPiece.position.x = mod(currentPiece.position.x - 3, width - 10);
     if (keys.w)
         currentPiece.position.y = mod(currentPiece.position.y - 3, height - 10);
+    if (rotationDifference > 0.01) {
+        rotationDifference -= Math.PI / 12;
+    }
+    else if (rotationDifference < -0.01) {
+        rotationDifference += Math.PI / 12;
+    }
     currentPiece.position.y += momevement;
     var collides = doesCollide(currentPiece.position.x, currentPiece.position.y);
     if (collides) {
@@ -174,13 +202,14 @@ function tick() {
             row.forEach(function (y, yindex) {
                 if (y) {
                     // console.log(`setting (${xindex + Math.floor(currentPiece.position.x / pixel)},${yindex + Math.floor(currentPiece.position.y / pixel)} )`)
-                    if (board[(xindex + Math.floor(currentPiece.position.x / pixel))] !== undefined)
-                        board[(xindex + Math.floor(currentPiece.position.x / pixel))][(yindex + Math.floor(currentPiece.position.y / pixel)) - 1] = true;
+                    if (board[(xindex + Math.round(currentPiece.position.x / pixel))] !== undefined)
+                        board[(xindex + Math.round(currentPiece.position.x / pixel))][(yindex + Math.floor(currentPiece.position.y / pixel)) - 1] = true;
                 }
             });
         });
         //@ts-ignore
         currentPiece = generatePiece(input.value);
+        rotationDifference = 0;
     }
     else {
     }
