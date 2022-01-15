@@ -152,6 +152,12 @@ function tick() {
         console.log(board[0]);
         board = makeBoard();
     }
+    var row = transpose(board).findIndex(function (row) { return row.every(function (x) { return x; }); });
+    if (row !== -1 && row !== 23) {
+        console.log("row", row);
+        board = board.splice(row, 1);
+        board.push(makeArray(pixelWidth, true));
+    }
     if (keys.d)
         currentPiece.position.x = mod(currentPiece.position.x + 3, width - 10);
     if (keys.s)
@@ -173,7 +179,7 @@ function tick() {
                 }
             });
         });
-        // console.log("boad", bo ard)
+        //@ts-ignore
         currentPiece = generatePiece(input.value);
     }
     else {
@@ -183,6 +189,6 @@ function main() {
     setInterval(function () {
         tick();
         draw();
-    }, 30);
+    }, 33);
 }
 main();

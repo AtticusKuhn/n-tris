@@ -142,6 +142,12 @@ function tick() {
         console.log(board[0])
         board = makeBoard()
     }
+    let row = transpose(board).findIndex(row => row.every(x => x))
+    if (row !== -1 && row !== 23) {
+        console.log("row", row)
+        board = board.splice(row, 1)
+        board.push(makeArray(pixelWidth, true))
+    }
     if (keys.d) currentPiece.position.x = mod(currentPiece.position.x + 3, width - 10)
     if (keys.s) currentPiece.position.y = mod(currentPiece.position.y + 7, height - 10)
     if (keys.a) currentPiece.position.x = mod(currentPiece.position.x - 3, width - 10)
@@ -161,7 +167,7 @@ function tick() {
                 }
             })
         })
-        // console.log("boad", bo ard)
+        //@ts-ignore
         currentPiece = generatePiece(input.value);
 
     } else {
@@ -172,6 +178,6 @@ function main() {
     setInterval(() => {
         tick();
         draw();
-    }, 30)
+    }, 33)
 }
 main();
